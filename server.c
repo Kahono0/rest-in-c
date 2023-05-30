@@ -6,16 +6,16 @@
 #include <unistd.h> // for write()
                     //
 //prototypes
-void handleRequest(char* w, char r, int new_client, char* handler(char*, char*));
-char handler(char* w, char* r);
+void handleRequest(char r, int new_client, char (*handler)(char));
+char handler(char r);
 
-void handleRequest(char* w, char r, int new_client, char* handler(char*, char*)){
+void handleRequest(char r, int new_client, char (*handler)(char)){
     //w is the response and r is the request string
-    char* response = handler(w, r);
-    write(new_client, response, strlen(response));
+    char response = handler(r);
+    write(new_client, &response, strlen(&response));
 }
 
-char handler(char* w, char* r){
+char handler(char r){
     //w is the response and r is the request string
     char *status_line = "HTTP/1.1 200 OK\r\n";
     char *headers = "Content-Type: text/html\r\n";
@@ -25,7 +25,7 @@ char handler(char* w, char* r){
     sprintf(length_str, "Content-Length: %d\r\n", content_length);
     char response[1000];
     sprintf(response, "%s%s%s\r\n%s", status_line, headers, length_str, body);
-    return response;
+    return *response;
 }
 
 int main() {
@@ -74,10 +74,9 @@ int main() {
     // connected to a client!
     printf("connected to client 🥳\n");
 
-    char *response[1000];
 
     // handle the handleRequest
-    handleRequest(response, request, new_client, handler);
+    handleRequest(*request, new_client, handler);
   }
 
   return 0;
