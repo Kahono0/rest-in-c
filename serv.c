@@ -21,9 +21,7 @@ typedef struct status {
 } Status;
 
 typedef struct request{
-    char* method;
-    char* path;
-    char* version;
+    Status status;
     Header headers[MAX_HEADER_LENGTH];
     char* body;
 } Request;
@@ -62,6 +60,7 @@ Status parseStatus(char* string) {
     char* token = strtok(string, " ");
     status.method = token;
     token = strtok(NULL, " ");
+    //terminate string
     status.path = token;
     token = strtok(NULL, " ");
     status.version = token;
@@ -87,9 +86,12 @@ Request parseRequest(char* request){
             }else{
                 printf("first line: %s\n", token);
                 Status s = parseStatus(token);
-                r.method = s.method;
-                r.path = s.path;
-                r.version = s.version;
+                printf("method: %s\n", s.method);
+                printf("path: %s\n", s.path);
+                printf("version: %s\n", s.version);
+                //r.method = s.method;
+                //r.path = s.path;
+                //r.version = s.version;
 
             }
             strcpy(token, "");
@@ -106,15 +108,8 @@ Request parseRequest(char* request){
 void handle(int new_client){
     char request[1000];
     read(new_client, request, 1000);
-    // printf("got request: %s\n", request);z
+    printf("got request: %s\n", request);
     Request r = parseRequest(request);
-
-    printf("Method, version and path\n");
-    printf("%s\n", r.method);
-    printf("%s\n", r.version);
-    printf("%s\n", r.path);
-
-
 
  // construct a response
     char *status_line = "HTTP/1.1 200 OK\r\n";
