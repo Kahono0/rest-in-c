@@ -5,6 +5,7 @@
 #include <unistd.h> // for write()
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 
 #define MAX_HEADER_LENGTH 1000
@@ -21,7 +22,7 @@ typedef struct status {
 } Status;
 
 typedef struct request{
-    Status status;
+    Status *status;
     Header headers[MAX_HEADER_LENGTH];
     char* body;
 } Request;
@@ -34,84 +35,92 @@ typedef struct response{
     char* body;
 } response;
 
-Header parseHeader(const char* string) {
-  Header header;
-
-  // Find the first occurrence of the colon ':' in the string.
-  size_t colon_index = strcspn(string, ":");
-
-  // Copy the substring up to the colon into the header's key.
-  header.key = malloc(colon_index + 1);
-  strncpy(header.key, string, colon_index);
-//   header.key[colon_index] = '\0';
-
-  // Copy the substring after the colon into the header's value.
-  header.value = malloc(strlen(string) - colon_index + 1);
-  strncpy(header.value, string + colon_index + 1, strlen(string) - colon_index);
-//   header.value[strlen(string) - colon_index] = '\0';
-
-  return header;
+char* subString(char* string, int start, int end){
+    char* sub = malloc(end - start + 1);
+    int i = 0;
+    for(int j = start; j < end; j++){
+        sub[i] = string[j];
+        i++;
+    }
+    sub[i] = '\0';
+    return sub;
 }
 
-Status parseStatus(char* string) {
-  Status status;
+void parseHeader(char* string, Header *header) {
+    header->key = malloc(strlen(string) + 1);
+    header->value = malloc(strlen(string) + 1);
 
-  // Split GET / HTTP/1.1
-    char* token = strtok(string, " ");
-    status.method = token;
-    token = strtok(NULL, " ");
-    //terminate string
-    status.path = token;
-    token = strtok(NULL, " ");
-    status.version = token;
+    sscanf(string, "%s %s", header->key, header->value);
 
-    return status;
+    header->key = subString(header->key, 0, strlen(header->key) - 1);
+}
+
+
+void parseStatus(char* string, Status *status) {
+    status->method = malloc(strlen(string) + 1);
+    status->path = malloc(strlen(string) + 1);
+    status->version = malloc(strlen(string) + 1);
+
+    sscanf(string, "%s %s %s", status->method, status->path, status->version);
+
 }
 
 //parse string request into request struct
-Request parseRequest(char* request){
-    Request r;
+void parseRequest(char* request, Request *req){
+    char *copy = strdup(request);
+
+    char *line = strtok(copy, "\n");
+    Status *status = malloc(sizeof(Status));
+    parseStatus(line, status);
+    req->status = status;
     int i = 0;
-    char lines[100][1000];
-    char token[1000];
-    int lineCount = 0;
-    int headerCount = 0;
-    while(request[i] != '\0'){
-        if(request[i] == '\n'){
-            strcpy(lines[lineCount], token);
-            lineCount++;
-            if(lineCount != 1){
-                Header h = parseHeader(token);
-                r.headers[lineCount] = h;
-            }else{
-                printf("first line: %s\n", token);
-                Status s = parseStatus(token);
-                printf("method: %s\n", s.method);
-                printf("path: %s\n", s.path);
-                printf("version: %s\n", s.version);
-                //r.method = s.method;
-                //r.path = s.path;
-                //r.version = s.version;
+    while(line != NULL){
+        line = strtok(NULL, "\r\n");
+        if(line != NULL){
+            Header *header = malloc(sizeof(Header));
+            parseHeader(line, header);
+            req->headers[i] = *header;
 
+            if(strcmp(header->key, "Content-Length") == 0){
+
+                line = strtok(NULL, "");
+
+                req->body = malloc(strlen(line) + 1);
+                strncpy(req->body, line, strlen(line) + 1);
+                req->body[strlen(line)] = '\0';
             }
-            strcpy(token, "");
 
-        }else{
-            strncat(token, &request[i], 1);
+
         }
-        i++;
+        //printf("line: %s\n", line);
+        if(line != NULL){
+            i++;
+
+        }
     }
 
-    return r;
+    free(copy);
 }
 
 void handle(int new_client){
     char request[1000];
     read(new_client, request, 1000);
-    printf("got request: %s\n", request);
-    Request r = parseRequest(request);
+    Request *req = malloc(sizeof(Request));
+    parseRequest(request, req);
 
- // construct a response
+    printf("method: %s\n", req->status->method);
+
+    printf("Headers: \n");
+    for(int i = 0; i < MAX_HEADER_LENGTH; i++){
+        if(req->headers[i].key != NULL){
+            printf("%s: %s\n", req->headers[i].key, req->headers[i].value);
+        }
+    }
+
+    printf("body: %s\n", req->body);
+
+
+    //construct a response
     char *status_line = "HTTP/1.1 200 OK\r\n";
     char *headers = "Content-Type: text/html\r\n";
     char *body = "<html><body><h1>Hello, Chad!</h1></body></html>\r\n";
@@ -155,6 +164,9 @@ int main(char argc, char *argv[]) {
   // listen for connections
   listen(the_socket, 10);
 
+
+  int i = 0;
+  clock_t start;
   for (;;) {
     // accept connections
     int new_client = accept(the_socket, NULL, NULL);
@@ -168,6 +180,17 @@ int main(char argc, char *argv[]) {
     // connected to a client!
     printf("connected to client \n");
     handle(new_client);
+    if(i == 0){
+        start = clock();
+    }
+    i++;
+    printf("i: %d\n", i);
+    if(i==1000){
+        clock_t end = clock();
+        double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+        printf("time spent: %f\n", time_spent);
+        break;
+    }
   }
 
   // close the the_socket

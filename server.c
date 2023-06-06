@@ -179,7 +179,7 @@
 
 //     return 0;
 // }
-
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -223,4 +223,37 @@ int main() {
     free(header.value);
 
     return 0;
+}*/
+
+#include <stdio.h>
+#include <string.h>
+
+void separateStringBySpaces(char* input) {
+    // Length of the input string
+    size_t length = strlen(input);
+
+    // Create arrays to store the separated parts
+    char method[length + 1];  // +1 for null terminator
+    char path[length + 1];
+    char protocol[length + 1];
+
+    // Initialize the arrays
+    memset(method, 0, sizeof(method));
+    memset(path, 0, sizeof(path));
+    memset(protocol, 0, sizeof(protocol));
+
+    // Use sscanf to separate the input string by spaces
+    sscanf(input, "%s %s %s", method, path, protocol);
+
+    // Print the separated parts
+    printf("Method: %s\n", method);
+    printf("Path: %s\n", path);
+    printf("Protocol: %s\n", protocol);
 }
+
+int main() {
+    char input[] = "POST /hello/hi HTTP/1.1";
+    separateStringBySpaces(input);
+    return 0;
+}
+
